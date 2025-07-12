@@ -9,32 +9,13 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.cluster import KMeans
+from sklearn.datasets import make_blobs
 
 # ------------------- SETUP ---------------------
-st.set_page_config(page_title="Diabetes App", layout="wide")
-df = pd.read_csv("diabetes.csv")
+st.set_page_config(page_title="Aplikasi Kesehatan & Lokasi", layout="wide")
+st.title("🧠 Aplikasi Prediksi Diabetes & Clustering")
 
-X = df.drop("Outcome", axis=1)
-y = df["Outcome"]
-
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
-
-X_train, X_test, y_train, y_test = train_test_split(
-    X_scaled, y, test_size=0.2, random_state=42, stratify=y
-)
-
-# Model KNN
-knn = KNeighborsClassifier(n_neighbors=7)
-knn.fit(X_train, y_train)
-y_pred = knn.predict(X_test)
-
-# Model KMeans untuk clustering pasien
-kmeans = KMeans(n_clusters=3, random_state=42)
-kmeans.fit(X_scaled)
-df['Cluster'] = kmeans.labels_
-
-# ------------------- NAVIGASI ---------------------
+# Sidebar navigasi
 st.sidebar.title("Navigasi Aplikasi")
 halaman = st.sidebar.radio("Pilih Halaman", [
     "Klasifikasi Diabetes",
@@ -42,11 +23,30 @@ halaman = st.sidebar.radio("Pilih Halaman", [
     "Clustering Gerai Kopi"
 ])
 
-# ------------------- KLASIFIKASI ---------------------
+# ------------------- Load Dataset Diabetes ---------------------
+@st.cache_data
+def load_data():
+    return pd.read_csv("diabetes.csv")
+
+df_diabetes = load_data()
+X = df_diabetes.drop("Outcome", axis=1)
+y = df_diabetes["Outcome"]
+
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# ------------------- KLASIFIKASI DIABETES ---------------------
 if halaman == "Klasifikasi Diabetes":
-    st.title("🧪 Prediksi Diabetes Menggunakan KNN")
+    st.header("🧪 Prediksi Diabetes Menggunakan KNN")
     st.markdown("Model KNN digunakan untuk memprediksi apakah seorang pasien menderita diabetes berdasarkan fitur-fitur medis.")
 
+    # Split & Train
+    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42, stratify=y)
+    knn = KNeighborsClassifier(n_neighbors=7)
+    knn.fit(X_train, y_train)
+    y_pred = knn.predict(X_test)
+
+    # Evaluasi
     col1, col2 = st.columns(2)
     with col1:
         st.subheader("📊 Metrik Evaluasi")
@@ -88,17 +88,21 @@ if halaman == "Klasifikasi Diabetes":
 
 # ------------------- CLUSTERING PASIEN ---------------------
 elif halaman == "Clustering Pasien":
-    st.title("📊 Clustering Pasien Menggunakan KMeans")
+    st.header("📊 Clustering Pasien Menggunakan KMeans")
     st.markdown("Model KMeans digunakan untuk mengelompokkan pasien berdasarkan kemiripan fitur medis.")
 
-    st.subheader("📈 Visualisasi Clustering")
+    # Clustering pasien
+    kmeans = KMeans(n_clusters=3, random_state=42)
+    df_diabetes['Cluster'] = kmeans.fit_predict(X_scaled)
+
+    st.subheader("📈 Visualisasi Clustering Berdasarkan Glucose dan BMI")
     fig, ax = plt.subplots()
-    sns.scatterplot(data=df, x="Glucose", y="BMI", hue="Cluster", palette="Set2", ax=ax)
-    ax.set_title("Clustering Berdasarkan Glucose dan BMI")
+    sns.scatterplot(data=df_diabetes, x="Glucose", y="BMI", hue="Cluster", palette="Set2", ax=ax)
+    ax.set_title("Clustering Pasien")
     st.pyplot(fig)
 
     st.markdown("---")
-    st.subheader("📝 Input Data Baru untuk Clustering")
+    st.subheader("📝 Input Data Pasien Baru untuk Clustering")
     col1, col2 = st.columns(2)
     with col1:
         glucose = st.number_input("Glucose", 0, 300, 120, key="cg")
@@ -107,56 +111,38 @@ elif halaman == "Clustering Pasien":
         insulin = st.number_input("Insulin", 0, 900, 80, key="ci")
         age = st.number_input("Age", 0, 120, 33, key="ca")
 
-    if st.button("Clusterkan"):
-        cluster_input = pd.DataFrame([[glucose, bmi, insulin, age]],
+    if st.button("Clusterkan Pasien"):
+        input_partial = pd.DataFrame([[glucose, bmi, insulin, age]],
                                      columns=["Glucose", "BMI", "Insulin", "Age"])
-        new_input_full = pd.DataFrame(columns=X.columns)
+        input_full = pd.DataFrame(columns=X.columns)
         for col in X.columns:
-            new_input_full[col] = [cluster_input[col].values[0] if col in cluster_input.columns else 0]
+            input_full[col] = [input_partial[col].values[0] if col in input_partial.columns else 0]
 
-        new_input_scaled = scaler.transform(new_input_full)
-        cluster_result = kmeans.predict(new_input_scaled)
+        input_scaled = scaler.transform(input_full)
+        cluster_result = kmeans.predict(input_scaled)
         st.success(f"Pasien ini termasuk ke dalam **Cluster {cluster_result[0]}**")
 
 # ------------------- CLUSTERING GERAI KOPI ---------------------
 elif halaman == "Clustering Gerai Kopi":
-    st.title("📍 Clustering Lokasi Gerai Kopi - KMeans")
+    st.header("📍 Clustering Lokasi Gerai Kopi - KMeans")
     st.markdown("Aplikasi ini mengelompokkan lokasi gerai kopi berdasarkan koordinat X dan Y menggunakan algoritma KMeans.")
 
-    try:
-        df_kopi = pd.read_csv("lokasi_gerai_kopi_clean.csv")
-    except:
-        st.warning("⚠️ File tidak ditemukan atau kosong, menggunakan data contoh.")
-        data_kopi = {
-            "Nama Gerai": ["Kopi A", "Kopi B", "Kopi C", "Kopi D", "Kopi E"],
-            "X": [1.0, 2.5, 1.2, 3.0, 3.5],
-            "Y": [2.0, 1.0, 1.5, 2.5, 3.0]
-        }
-        df_kopi = pd.DataFrame(data_kopi)
+    X_kopi, _ = make_blobs(n_samples=1000, centers=3, n_features=2, random_state=42)
+    df_kopi = pd.DataFrame(X_kopi, columns=["X", "Y"])
 
-    if "X" in df_kopi.columns and "Y" in df_kopi.columns:
-        kmeans_kopi = KMeans(n_clusters=3, random_state=42)
-        df_kopi["Cluster"] = kmeans_kopi.fit_predict(df_kopi[["X", "Y"]])
+    kmeans_kopi = KMeans(n_clusters=3, random_state=42)
+    df_kopi["Cluster"] = kmeans_kopi.fit_predict(df_kopi[["X", "Y"]])
 
-        st.subheader("📈 Visualisasi Clustering Lokasi Gerai Kopi")
-        fig, ax = plt.subplots()
-        sns.scatterplot(data=df_kopi, x="X", y="Y", hue="Cluster", palette="tab10", ax=ax)
-        ax.set_title("Cluster Lokasi Gerai Kopi")
-        st.pyplot(fig)
+    st.subheader("📈 Visualisasi Clustering")
+    fig, ax = plt.subplots()
+    sns.scatterplot(data=df_kopi, x="X", y="Y", hue="Cluster", palette="Set2", ax=ax)
+    ax.set_title("Cluster Lokasi Gerai Kopi (Data Dummy)")
+    st.pyplot(fig)
 
-        st.subheader("📋 Tabel Data Gerai dan Cluster")
-        st.dataframe(df_kopi)
+    st.subheader("📝 Input Lokasi Gerai Baru")
+    x_input = st.number_input("Koordinat X", value=0.0, format="%.2f")
+    y_input = st.number_input("Koordinat Y", value=0.0, format="%.2f")
 
-        st.subheader("📊 Ringkasan Jumlah Gerai per Cluster")
-        st.bar_chart(df_kopi['Cluster'].value_counts().sort_index())
-
-        st.markdown("---")
-        st.subheader("📝 Input Lokasi Gerai Baru")
-        x = st.number_input("Koordinat X", value=0.0, format="%.2f")
-        y = st.number_input("Koordinat Y", value=0.0, format="%.2f")
-
-        if st.button("Clusterkan Lokasi Baru"):
-            pred_cluster = kmeans_kopi.predict([[x, y]])
-            st.success(f"📌 Lokasi baru dikelompokkan ke dalam **Cluster {pred_cluster[0]}**")
-    else:
-        st.error("Dataset tidak memiliki kolom X dan Y.")
+    if st.button("Cek Cluster"):
+        pred = kmeans_kopi.predict([[x_input, y_input]])[0]
+        st.success(f"📌 Lokasi tersebut masuk ke dalam **Cluster: {pred}**")
