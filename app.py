@@ -29,7 +29,7 @@ knn = KNeighborsClassifier(n_neighbors=7)
 knn.fit(X_train, y_train)
 y_pred = knn.predict(X_test)
 
-# Model KMeans
+# Model KMeans untuk pasien
 kmeans = KMeans(n_clusters=3, random_state=42)
 kmeans.fit(X_scaled)
 df['Cluster'] = kmeans.labels_
@@ -120,37 +120,37 @@ elif halaman == "Clustering Pasien":
 
 # ------------------- CLUSTERING GERAI KOPI ---------------------
 elif halaman == "Clustering Gerai Kopi":
-    st.title("📍 Clustering Lokasi Gerai Kopi")
-    st.markdown("Clustering lokasi gerai kopi berdasarkan koordinat geografis menggunakan KMeans.")
+    st.title("📍 Clustering Lokasi Gerai Kopi - KMeans")
+    st.markdown("Aplikasi ini mengelompokkan lokasi gerai kopi berdasarkan koordinat X dan Y menggunakan algoritma KMeans.")
 
     try:
         df_kopi = pd.read_csv("lokasi_gerai_kopi_clean.csv")
 
-        if "Latitude" in df_kopi.columns and "Longitude" in df_kopi.columns:
+        if "X" in df_kopi.columns and "Y" in df_kopi.columns:
             kmeans_kopi = KMeans(n_clusters=3, random_state=42)
-            df_kopi["Cluster"] = kmeans_kopi.fit_predict(df_kopi[["Latitude", "Longitude"]])
+            df_kopi["Cluster"] = kmeans_kopi.fit_predict(df_kopi[["X", "Y"]])
 
-            st.subheader("🗺️ Visualisasi Cluster Gerai Kopi")
+            st.subheader("📈 Visualisasi Clustering")
             fig, ax = plt.subplots()
             sns.scatterplot(
                 data=df_kopi,
-                x="Longitude", y="Latitude",
+                x="X", y="Y",
                 hue="Cluster",
                 palette="tab10",
                 ax=ax
             )
-            ax.set_title("Clustering Lokasi Gerai Kopi")
+            ax.set_title("Clustering Lokasi Gerai Kopi berdasarkan X dan Y")
             st.pyplot(fig)
 
             st.markdown("---")
-            st.subheader("📝 Input Koordinat Gerai Baru")
-            lat = st.number_input("Latitude", value=-6.2, format="%.6f")
-            lon = st.number_input("Longitude", value=106.8, format="%.6f")
+            st.subheader("📝 Input Lokasi Baru")
+            x = st.number_input("Koordinat X", value=0.00, format="%.2f")
+            y = st.number_input("Koordinat Y", value=0.00, format="%.2f")
 
-            if st.button("Clusterkan Gerai Baru"):
-                cluster_baru = kmeans_kopi.predict([[lat, lon]])
-                st.success(f"Gerai baru termasuk dalam **Cluster {cluster_baru[0]}**")
+            if st.button("Clusterkan Lokasi Baru"):
+                cluster_baru = kmeans_kopi.predict([[x, y]])
+                st.success(f"Lokasi baru termasuk dalam **Cluster {cluster_baru[0]}**")
         else:
-            st.error("Kolom Latitude dan Longitude tidak ditemukan di dataset.")
+            st.error("Kolom X dan Y tidak ditemukan di dataset.")
     except FileNotFoundError:
-        st.error("File lokasi_gerai_kopi_clean.csv tidak ditemukan. Pastikan file tersedia di folder yang sama dengan app.py.")
+        st.error("File lokasi_gerai_kopi_clean.csv tidak ditemukan.")
