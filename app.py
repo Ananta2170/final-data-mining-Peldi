@@ -36,10 +36,14 @@ df['Cluster'] = kmeans.labels_
 
 # ------------------- NAVIGASI ---------------------
 st.sidebar.title("Navigasi Aplikasi")
-menu = st.sidebar.radio("Pilih Menu", ["Klasifikasi Diabetes", "Clustering Pasien"])
+halaman = st.sidebar.radio("Pilih Halaman", [
+    "Klasifikasi Diabetes",
+    "Clustering Pasien",
+    "Clustering Gerai Kopi"
+])
 
 # ------------------- KLASIFIKASI ---------------------
-if menu == "Klasifikasi Diabetes":
+if halaman == "Klasifikasi Diabetes":
     st.title("🧪 Prediksi Diabetes Menggunakan KNN")
     st.markdown("Model KNN digunakan untuk memprediksi apakah seorang pasien menderita diabetes berdasarkan fitur-fitur medis.")
 
@@ -82,8 +86,8 @@ if menu == "Klasifikasi Diabetes":
         hasil = "✅ Tidak Diabetes" if prediction[0] == 0 else "⚠️ Positif Diabetes"
         st.success(f"Hasil Prediksi: **{hasil}**")
 
-# ------------------- CLUSTERING ---------------------
-elif menu == "Clustering Pasien":
+# ------------------- CLUSTERING PASIEN ---------------------
+elif halaman == "Clustering Pasien":
     st.title("📊 Clustering Pasien Menggunakan KMeans")
     st.markdown("Model KMeans digunakan untuk mengelompokkan pasien berdasarkan kemiripan fitur medis.")
 
@@ -113,3 +117,40 @@ elif menu == "Clustering Pasien":
         new_input_scaled = scaler.transform(new_input_full)
         cluster_result = kmeans.predict(new_input_scaled)
         st.success(f"Pasien ini termasuk ke dalam **Cluster {cluster_result[0]}**")
+
+# ------------------- CLUSTERING GERAI KOPI ---------------------
+elif halaman == "Clustering Gerai Kopi":
+    st.title("📍 Clustering Lokasi Gerai Kopi")
+    st.markdown("Clustering lokasi gerai kopi berdasarkan koordinat geografis menggunakan KMeans.")
+
+    try:
+        df_kopi = pd.read_csv("lokasi_gerai_kopi_clean.csv")
+
+        if "Latitude" in df_kopi.columns and "Longitude" in df_kopi.columns:
+            kmeans_kopi = KMeans(n_clusters=3, random_state=42)
+            df_kopi["Cluster"] = kmeans_kopi.fit_predict(df_kopi[["Latitude", "Longitude"]])
+
+            st.subheader("🗺️ Visualisasi Cluster Gerai Kopi")
+            fig, ax = plt.subplots()
+            sns.scatterplot(
+                data=df_kopi,
+                x="Longitude", y="Latitude",
+                hue="Cluster",
+                palette="tab10",
+                ax=ax
+            )
+            ax.set_title("Clustering Lokasi Gerai Kopi")
+            st.pyplot(fig)
+
+            st.markdown("---")
+            st.subheader("📝 Input Koordinat Gerai Baru")
+            lat = st.number_input("Latitude", value=-6.2, format="%.6f")
+            lon = st.number_input("Longitude", value=106.8, format="%.6f")
+
+            if st.button("Clusterkan Gerai Baru"):
+                cluster_baru = kmeans_kopi.predict([[lat, lon]])
+                st.success(f"Gerai baru termasuk dalam **Cluster {cluster_baru[0]}**")
+        else:
+            st.error("Kolom Latitude dan Longitude tidak ditemukan di dataset.")
+    except FileNotFoundError:
+        st.error("File lokasi_gerai_kopi_clean.csv tidak ditemukan. Pastikan file tersedia di folder yang sama dengan app.py.")
