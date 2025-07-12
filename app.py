@@ -29,7 +29,7 @@ knn = KNeighborsClassifier(n_neighbors=7)
 knn.fit(X_train, y_train)
 y_pred = knn.predict(X_test)
 
-# Model KMeans untuk pasien
+# Model KMeans untuk clustering pasien
 kmeans = KMeans(n_clusters=3, random_state=42)
 kmeans.fit(X_scaled)
 df['Cluster'] = kmeans.labels_
@@ -125,32 +125,38 @@ elif halaman == "Clustering Gerai Kopi":
 
     try:
         df_kopi = pd.read_csv("lokasi_gerai_kopi_clean.csv")
+    except:
+        st.warning("⚠️ File tidak ditemukan atau kosong, menggunakan data contoh.")
+        data_kopi = {
+            "Nama Gerai": ["Kopi A", "Kopi B", "Kopi C", "Kopi D", "Kopi E"],
+            "X": [1.0, 2.5, 1.2, 3.0, 3.5],
+            "Y": [2.0, 1.0, 1.5, 2.5, 3.0]
+        }
+        df_kopi = pd.DataFrame(data_kopi)
 
-        if "X" in df_kopi.columns and "Y" in df_kopi.columns:
-            kmeans_kopi = KMeans(n_clusters=3, random_state=42)
-            df_kopi["Cluster"] = kmeans_kopi.fit_predict(df_kopi[["X", "Y"]])
+    if "X" in df_kopi.columns and "Y" in df_kopi.columns:
+        kmeans_kopi = KMeans(n_clusters=3, random_state=42)
+        df_kopi["Cluster"] = kmeans_kopi.fit_predict(df_kopi[["X", "Y"]])
 
-            st.subheader("📈 Visualisasi Clustering")
-            fig, ax = plt.subplots()
-            sns.scatterplot(
-                data=df_kopi,
-                x="X", y="Y",
-                hue="Cluster",
-                palette="tab10",
-                ax=ax
-            )
-            ax.set_title("Clustering Lokasi Gerai Kopi berdasarkan X dan Y")
-            st.pyplot(fig)
+        st.subheader("📈 Visualisasi Clustering Lokasi Gerai Kopi")
+        fig, ax = plt.subplots()
+        sns.scatterplot(data=df_kopi, x="X", y="Y", hue="Cluster", palette="tab10", ax=ax)
+        ax.set_title("Cluster Lokasi Gerai Kopi")
+        st.pyplot(fig)
 
-            st.markdown("---")
-            st.subheader("📝 Input Lokasi Baru")
-            x = st.number_input("Koordinat X", value=0.00, format="%.2f")
-            y = st.number_input("Koordinat Y", value=0.00, format="%.2f")
+        st.subheader("📋 Tabel Data Gerai dan Cluster")
+        st.dataframe(df_kopi)
 
-            if st.button("Clusterkan Lokasi Baru"):
-                cluster_baru = kmeans_kopi.predict([[x, y]])
-                st.success(f"Lokasi baru termasuk dalam **Cluster {cluster_baru[0]}**")
-        else:
-            st.error("Kolom X dan Y tidak ditemukan di dataset.")
-    except FileNotFoundError:
-        st.error("File lokasi_gerai_kopi_clean.csv tidak ditemukan.")
+        st.subheader("📊 Ringkasan Jumlah Gerai per Cluster")
+        st.bar_chart(df_kopi['Cluster'].value_counts().sort_index())
+
+        st.markdown("---")
+        st.subheader("📝 Input Lokasi Gerai Baru")
+        x = st.number_input("Koordinat X", value=0.0, format="%.2f")
+        y = st.number_input("Koordinat Y", value=0.0, format="%.2f")
+
+        if st.button("Clusterkan Lokasi Baru"):
+            pred_cluster = kmeans_kopi.predict([[x, y]])
+            st.success(f"📌 Lokasi baru dikelompokkan ke dalam **Cluster {pred_cluster[0]}**")
+    else:
+        st.error("Dataset tidak memiliki kolom X dan Y.")
